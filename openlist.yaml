@@ -47,8 +47,11 @@ metadata:
 spec:
   selector:
     app: openlist
-  type: NodePort
+  type: ClusterIP
+  # 需要使用IP访问则使用NodePort模式
+  # type: NodePort
   ports:
     - port: 5244
       targetPort: 5244
-      nodePort: 30244
+      # 使用NordPort模式需要指定端口, 默认限制30000-32767 端口范围
+      # nodePort: 30244
