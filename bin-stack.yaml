@@ -1,0 +1,54 @@
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: openlist-pvc
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 5Gi
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: openlist
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: openlist
+  template:
+    metadata:
+      labels:
+        app: openlist
+    spec:
+      containers:
+        - name: openlist
+          image: openlistteam/openlist:latest
+          ports:
+            - containerPort: 5244
+              name: http
+          volumeMounts:
+            - name: openlist-data
+              mountPath: /opt/openlist/data
+      volumes:
+        - name: openlist-data
+          persistentVolumeClaim:
+            claimName: openlist-pvc
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: openlist-service
+spec:
+  selector:
+    app: openlist
+  type: NodePort
+  ports:
+    - port: 5244
+      targetPort: 5244
+      nodePort: 30244
