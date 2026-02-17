@@ -47,10 +47,37 @@ metadata:
 spec:
   selector:
     app: openlist
-  type: NodePort
+  type: ClusterIP
   ports:
     - name: http
       port: 5244
       targetPort: 5244
-      # 端口范围30000-32767
-      nodePort: 30244
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: cloudflared
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: cloudflared
+  template:
+    metadata:
+      labels:
+        app: cloudflared
+    spec:
+      containers:
+      - name: cloudflared
+        image: cloudflare/cloudflared:latest
+        args:
+        - tunnel
+        - --no-autoupdate
+        - run
+        env:
+        - name: TUNNEL_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: cf-tunnel
+              key: TUNNEL_TOKEN
