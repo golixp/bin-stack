@@ -31,6 +31,8 @@ spec:
           ports:
             - containerPort: 5244
               name: http
+            - containerPort: 5222
+              name: sftp
           volumeMounts:
             - name: openlist-data
               mountPath: /opt/openlist/data
@@ -43,7 +45,7 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: openlist-service
+  name: openlist-http-service
 spec:
   selector:
     app: openlist
@@ -51,7 +53,24 @@ spec:
   # 需要使用IP访问则使用NodePort模式
   # type: NodePort
   ports:
-    - port: 5244
+    - name: http
+      port: 5244
       targetPort: 5244
-      # 使用NordPort模式需要指定端口, 默认限制30000-32767 端口范围
+      # 使用NodePort模式需要指定端口, 默认限制30000-32767 端口范围
       # nodePort: 30244
+
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: openlist-sftp-service
+spec:
+  selector:
+    app: openlist
+  type: NodePort
+  ports:
+    - name: sftp
+      port: 5222
+      targetPort: 5222
+      nodePort: 30022
