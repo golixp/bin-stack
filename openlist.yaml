@@ -36,18 +36,3 @@ spec:
           persistentVolumeClaim:
             claimName: openlist-pvc
 
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: openlist-http-service
-spec:
-  selector:
-    app: openlist
-  type: NodePort
-  ports:
-    - name: http
-      port: 5244
-      targetPort: 5244
-      # 端口范围30000-32767
-      nodePort: 30244
