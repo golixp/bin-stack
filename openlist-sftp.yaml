@@ -28,11 +28,6 @@ spec:
       containers:
         - name: openlist
           image: openlistteam/openlist:latest
-          ports:
-            - containerPort: 5244
-              name: http
-            - containerPort: 5222
-              name: sftp
           volumeMounts:
             - name: openlist-data
               mountPath: /opt/openlist/data

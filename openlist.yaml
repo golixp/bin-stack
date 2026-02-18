@@ -28,9 +28,6 @@ spec:
       containers:
         - name: openlist
           image: openlistteam/openlist:latest
-          ports:
-            - containerPort: 5244
-              name: http
           volumeMounts:
             - name: openlist-data
               mountPath: /opt/openlist/data
