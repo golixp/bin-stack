@@ -1,7 +1,7 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: openlist-http-service
+  name: openlist-nodeport-service
 spec:
   selector:
     app: openlist
@@ -10,5 +10,5 @@ spec:
     - name: http
       port: 5244
       targetPort: 5244
-      # 端口范围30000-32767
+      # 端口范围 30000-32767
       nodePort: 30244
