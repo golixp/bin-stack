@@ -3,12 +3,12 @@ kind: Kustomization
 
 resources:
   - components/config
-  - components/cert-manager
+  # - components/cert-manager
   - components/openlist-base
   - components/openlist-cf-tunnel
   # - components/openlist-sftp
   # - components/openlist-node-port
-  - components/openlist-ingress
+  # - components/openlist-ingress
   - components/secrets
 
 # 从 ConfigMap 替换非敏感配置
