@@ -1,9 +1,6 @@
 #+title: Readme
 
-* bin-stack: 二进制文件存储
-
-使用 k3s 搭建 openlist. cloudflare tunnel 代理流量.
-
+* 前置操作
 ** k3s
 
 运行命令安装:
@@ -64,19 +61,31 @@ kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/
 参考官方安装指南: https://cert-manager.io/docs/installation
 
 
-** openlist
+* 部署服务
 
-*** 部署
+修改主目录 =kustomization.yaml= 中的 =resources= 配置, 启用功能, 功能如下:
 
-应用服务:
-
-#+begin_src bash
-kubectl apply -f openlist.yaml
+#+begin_src yaml
+resources:
+  - components/openlist-base # 主服务
+  - components/config        # 存储配置键值
+  - components/secrets       # 存储密钥
+  - components/openlist-cf-tunnel # Cloudflare Tunnel 配置
+  - components/openlist-sftp      # OpenList SFTP 服务
+  - components/openlist-node-port # 开启服务器 IP 访问服务
+  - components/cert-manager       # 证书服务
+  - components/openlist-ingress   # traefik 反向代理服务
 #+end_src
 
-如果是直接 ip 访问或者在外部配置 nginx 等反向代理, 需要将配置文件中的 Service 改为 NodePort 模式.
+接下来参考 =components/secrets/value.env.example= 和 =components/config/config.env.example= 中的配置, 其中 =config= 的邮箱和域名和 =secrets= 的 DNS API Token 都是自动申请和续签域名证书用的, 不需要可以不填, Tunnel Token 是使用 Cloudflare Tunnel 需要的, 不需要也可以不填.
 
-*** 初始密码
+之后使用 ~kustomize build~ 命令查看最终生成的配置文件, 使用命令 ~kustomize build . | ssh user@1.2.3.4 "cat > ~/openlist-k3s.yaml"~ 可以将配置发送到服务器, 在服务器执行命令安装:
+
+#+begin_src bash
+kubectl apply -f openlist-k3s.yaml
+#+end_src
+
+** 初始密码
 
 初始 admin 密码在日志中, 查看日志:
 
@@ -86,7 +95,7 @@ kubectl logs -f -l app=openlist
 
 其中有 `Successfully created the admin user and the initial password is: xxxxxxxx`  类似字样.
 
-*** 配置目录
+** 配置目录
 
 配置目录挂载在 k3s pvc 中, 使用 =kubectl get pvc= 查看 pvc 名称, 物理路径默认在 =/var/lib/rancher/k3s/storage/= 目录存储, 路径名称类似:
 #+begin_example
@@ -100,7 +109,7 @@ drwxr--r-- 2 user user   4096 Feb 16 19:56 log
 drwxr-xr-x 2 user user   4096 Feb 16 19:56 temp
 #+end_example
 
-*** 加密目录
+** 加密目录
 
 openlist 支持加密配置目录, 内容见: https://doc.oplist.org/guide/drivers/crypt , 文档提到了加密后不能修改配置, 实测可以修改除了加密配置项以外的参数, 例如缩略图/排序方式等内容, 不影响加密.
 
@@ -133,23 +142,3 @@ rclone copy crypt: ~/Downloads
 rclone ls crypt:
 #+end_src
 
-** cloudflare tunnel
-
-应用服务:
-
-#+begin_src bash
-kubectl apply -f cloudflare-tunnel.yaml
-#+end_src
-
-添加 Token:
-
-#+begin_src bash
-kubectl create secret generic cf-tunnel --from-literal=TUNNEL_TOKEN=<cloudflare-tunnel-token>
-#+end_src
-
-查看 secret:
-
-#+begin_src bash
-kubectl get secrets
-kubectl get secret cf-tunnel -o yaml
-#+end_src

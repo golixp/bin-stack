@@ -1,23 +1,21 @@
-- [bin-stack: 二进制文件存储](#org2fbe068)
-  - [k3s](#orgb51ef89)
-    - [普通用户权限运行 kubectl](#orge11b139)
-  - [openlist](#orge2fb528)
-    - [部署](#org0fd0c4d)
-    - [初始密码](#org55c4e70)
-    - [配置目录](#org3ed8270)
-    - [加密目录](#orgc598951)
-  - [cloudflare tunnel](#orgd8cfee7)
+- [前置操作](#org6b05398)
+  - [k3s](#org19e96b1)
+    - [普通用户权限运行 kubectl](#orgb23d777)
+  - [helm](#orgc9a03a5)
+  - [cert-manager](#org3bf55d0)
+- [部署服务](#org1514893)
+  - [初始密码](#org26987c4)
+  - [配置目录](#org14d409a)
+  - [加密目录](#orgbcba077)
 
 
 
-<a id="org2fbe068"></a>
+<a id="org6b05398"></a>
 
-# bin-stack: 二进制文件存储
-
-使用 k3s 搭建 openlist. cloudflare tunnel 代理流量.
+# 前置操作
 
 
-<a id="orgb51ef89"></a>
+<a id="org19e96b1"></a>
 
 ## k3s
 
@@ -34,7 +32,7 @@ curl -sfL https://rancher-mirror.rancher.cn/k3s/k3s-install.sh | INSTALL_K3S_MIR
 ```
 
 
-<a id="orge11b139"></a>
+<a id="orgb23d777"></a>
 
 ### 普通用户权限运行 kubectl
 
@@ -49,27 +47,75 @@ sudo chown $(id -u):$(id -g) $HOME/.kube/config
 这样会导致普通用户有权限用户有权限控制整个集群, 谨慎抉择.
 
 
-<a id="orge2fb528"></a>
+<a id="orgc9a03a5"></a>
 
-## openlist
+## helm
 
-
-<a id="org0fd0c4d"></a>
-
-### 部署
-
-应用服务:
+命令安装 helm:
 
 ```bash
-kubectl apply -f openlist.yaml
+curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
 ```
 
-如果是直接 ip 访问或者在外部配置 nginx 等反向代理, 需要将配置文件中的 Service 改为 NodePort 模式.
+参考官方安装指南: <https://helm.sh/zh/docs/intro/install>
 
 
-<a id="org55c4e70"></a>
+<a id="org3bf55d0"></a>
 
-### 初始密码
+## cert-manager
+
+个人测试在 2c2g 机器的 k3s 上安装 cert-manager, 会有严重的 io 卡顿, 不建议在低配机器使用.
+
+cert-manager 是自动管理和申请证书的插件, 使用 helm 安装:
+
+```bash
+helm install \
+  cert-manager oci://quay.io/jetstack/charts/cert-manager \
+  --version v1.19.2 \
+  --namespace cert-manager \
+  --create-namespace \
+  --set crds.enabled=true
+```
+
+kubectl 安装:
+
+```bash
+kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/v1.19.2/cert-manager.yaml
+```
+
+参考官方安装指南: <https://cert-manager.io/docs/installation>
+
+
+<a id="org1514893"></a>
+
+# 部署服务
+
+修改主目录 `kustomization.yaml` 中的 `resources` 配置, 启用功能, 功能如下:
+
+```yaml
+resources:
+  - components/openlist-base # 主服务
+  - components/config        # 存储配置键值
+  - components/secrets       # 存储密钥
+  - components/openlist-cf-tunnel # Cloudflare Tunnel 配置
+  - components/openlist-sftp      # OpenList SFTP 服务
+  - components/openlist-node-port # 开启服务器 IP 访问服务
+  - components/cert-manager       # 证书服务
+  - components/openlist-ingress   # traefik 反向代理服务
+```
+
+接下来参考 `components/secrets/value.env.example` 和 `components/config/config.env.example` 中的配置, 其中 `config` 的邮箱和域名和 `secrets` 的 DNS API Token 都是自动申请和续签域名证书用的, 不需要可以不填, Tunnel Token 是使用 Cloudflare Tunnel 需要的, 不需要也可以不填.
+
+之后使用 `kustomize build` 命令查看最终生成的配置文件, 使用命令 `kustomize build . | ssh user@1.2.3.4 "cat > ~/openlist-k3s.yaml"` 可以将配置发送到服务器, 在服务器执行命令安装:
+
+```bash
+kubectl apply -f openlist-k3s.yaml
+```
+
+
+<a id="org26987c4"></a>
+
+## 初始密码
 
 初始 admin 密码在日志中, 查看日志:
 
@@ -80,9 +126,9 @@ kubectl logs -f -l app=openlist
 其中有 \`Successfully created the admin user and the initial password is: xxxxxxxx\` 类似字样.
 
 
-<a id="org3ed8270"></a>
+<a id="org14d409a"></a>
 
-### 配置目录
+## 配置目录
 
 配置目录挂载在 k3s pvc 中, 使用 `kubectl get pvc` 查看 pvc 名称, 物理路径默认在 `/var/lib/rancher/k3s/storage/` 目录存储, 路径名称类似:
 
@@ -98,9 +144,9 @@ drwxr-xr-x 2 user user   4096 Feb 16 19:56 temp
 ```
 
 
-<a id="orgc598951"></a>
+<a id="orgbcba077"></a>
 
-### 加密目录
+## 加密目录
 
 openlist 支持加密配置目录, 内容见: <https://doc.oplist.org/guide/drivers/crypt> , 文档提到了加密后不能修改配置, 实测可以修改除了加密配置项以外的参数, 例如缩略图/排序方式等内容, 不影响加密.
 
@@ -131,28 +177,4 @@ rclone mount crypt: ~/Downloads/decoded_files --vfs-cache-mode full
 rclone copy crypt: ~/Downloads
 # 查看加密文件
 rclone ls crypt:
-```
-
-
-<a id="orgd8cfee7"></a>
-
-## cloudflare tunnel
-
-应用服务:
-
-```bash
-kubectl apply -f cloudflare-tunnel.yaml
-```
-
-添加 Token:
-
-```bash
-kubectl create secret generic cf-tunnel --from-literal=TUNNEL_TOKEN=<cloudflare-tunnel-token>
-```
-
-查看 secret:
-
-```bash
-kubectl get secrets
-kubectl get secret cf-tunnel -o yaml
 ```
