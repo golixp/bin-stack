@@ -30,6 +30,40 @@ sudo chown $(id -u):$(id -g) $HOME/.kube/config
 
 这样会导致普通用户有权限用户有权限控制整个集群, 谨慎抉择.
 
+** helm
+
+命令安装 helm:
+
+#+begin_src bash
+curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+#+end_src
+
+参考官方安装指南: https://helm.sh/zh/docs/intro/install
+
+** cert-manager
+
+个人测试在 2c2g 机器的 k3s 上安装 cert-manager, 会有严重的 io 卡顿, 不建议在低配机器使用.
+
+cert-manager 是自动管理和申请证书的插件, 使用 helm 安装:
+
+#+begin_src bash
+helm install \
+  cert-manager oci://quay.io/jetstack/charts/cert-manager \
+  --version v1.19.2 \
+  --namespace cert-manager \
+  --create-namespace \
+  --set crds.enabled=true
+#+end_src
+
+kubectl 安装:
+
+#+begin_src bash
+kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/v1.19.2/cert-manager.yaml
+#+end_src
+
+参考官方安装指南: https://cert-manager.io/docs/installation
+
+
 ** openlist
 
 *** 部署

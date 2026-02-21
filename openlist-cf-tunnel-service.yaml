@@ -37,5 +37,5 @@ spec:
         - name: TUNNEL_TOKEN
           valueFrom:
             secretKeyRef:
-              name: cf-tunnel
+              name: cloudflare
               key: TUNNEL_TOKEN

@@ -1,0 +1,16 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+secretGenerator:
+  - name: cloudflare
+    namespace: cert-manager
+    envs:
+      - cloudflare.env
+
+  - name: cloudflare
+    namespace: default
+    envs:
+      - cloudflare.env
+
+resources:
+  - openlist-cf-tunnel-service.yaml
