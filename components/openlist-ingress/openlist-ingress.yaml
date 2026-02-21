@@ -1,0 +1,27 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: openlist-ingress
+  annotations:
+    # Traefik 配置：HTTP 自动跳转 HTTPS
+    traefik.ingress.kubernetes.io/router.entrypoints: websecure
+    traefik.ingress.kubernetes.io/router.tls: "true"
+    # 使用 cert-manager 管理的 TLS 证书
+    cert-manager.io/cluster-issuer: cloudflare-issuer
+spec:
+  ingressClassName: traefik
+  rules:
+    - host: PLACEHOLDER_OPENLIST_DOMAIN
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: openlist-http-service
+                port:
+                  number: 5244
+  tls:
+    - hosts:
+        - PLACEHOLDER_OPENLIST_DOMAIN
+      secretName: openlist-tls
