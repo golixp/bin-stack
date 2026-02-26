@@ -49,6 +49,9 @@ status() {
     echo ""
     echo "=== 端口映射 ==="
     podman port "$STACK_NAME" 2>/dev/null || echo "未找到端口映射"
+    echo ""
+    echo "=== PVC 宿主机目录 ==="
+    podman volume inspect openlist-pvc 2>/dev/null | grep -o '"Mountpoint": "[^"]*"' | cut -d'"' -f4 || echo "未找到 PVC 卷"
 }
 
 case "${1:-start}" in

@@ -3,6 +3,8 @@
 *.log
 tmp/
 
+openlist-podman.yaml
+
 *secret*.yaml
 
 *.env
