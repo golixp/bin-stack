@@ -7,8 +7,9 @@ kind: Kustomization
 resources:
   - ../../components/openlist-base
 
-# 使用 patches 为 Deployment 注入端口配置
+# 使用 patches 为 Deployment 注入端口配置和安全上下文
 patches:
+  # 添加端口配置
   - target:
       kind: Deployment
       name: openlist
@@ -18,3 +19,18 @@ patches:
         value:
           - containerPort: 5244
             hostPort: 30244
+  # 添加安全上下文解决 Podman PVC 权限问题
+  - target:
+      kind: Deployment
+      name: openlist
+    patch: |-
+      - op: add
+        path: /spec/template/spec/securityContext
+        value:
+          fsGroup: 0
+      - op: add
+        path: /spec/template/spec/containers/0/securityContext
+        value:
+          runAsUser: 0
+          runAsGroup: 0
+          runAsNonRoot: false
