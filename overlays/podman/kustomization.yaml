@@ -1,0 +1,20 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+# Podman 本地环境配置
+# 仅核心服务，用于本地测试
+
+resources:
+  - ../../components/openlist-base
+
+# 使用 patches 为 Deployment 注入端口配置
+patches:
+  - target:
+      kind: Deployment
+      name: openlist
+    patch: |-
+      - op: add
+        path: /spec/template/spec/containers/0/ports
+        value:
+          - containerPort: 5244
+            hostPort: 30244

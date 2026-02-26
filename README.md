@@ -1,21 +1,54 @@
-- [前置操作](#org6b05398)
-  - [k3s](#org19e96b1)
-    - [普通用户权限运行 kubectl](#orgb23d777)
-  - [helm](#orgc9a03a5)
-  - [cert-manager](#org3bf55d0)
-- [部署服务](#org1514893)
-  - [初始密码](#org26987c4)
-  - [配置目录](#org14d409a)
-  - [加密目录](#orgbcba077)
+- [目录结构](#org051227a)
+- [前置操作](#orgaf34533)
+  - [k3s](#org8a48c96)
+    - [普通用户权限运行 kubectl](#orge34074f)
+  - [helm](#org64774cd)
+  - [cert-manager](#org0623200)
+- [部署服务](#org3c37ad6)
+  - [组件说明](#org5aed187)
+  - [配置说明](#orgb88ec65)
+    - [非敏感配置 (\`components/config/config.env\`)](#org431df86)
+    - [敏感配置 (\`components/secrets/value.env\`)](#org14b6a2e)
+  - [k3s 部署](#orgcaeed35)
+  - [podman 部署](#org9402930)
+  - [初始密码](#orgaa40dfe)
+  - [配置目录](#orgeaeac9f)
+  - [加密目录](#org8505524)
 
 
 
-<a id="org6b05398"></a>
+<a id="org051227a"></a>
+
+# 目录结构
+
+```
+.
+├── components/           # 基础组件配置
+│   ├── cert-manager/     # cert-manager 配置 (ClusterIssuer, Certificate)
+│   ├── config/           # 非敏感配置 (ConfigMap)
+│   ├── openlist-base/    # OpenList 基础配置 (Deployment, PVC)
+│   ├── openlist-cf-tunnel/  # Cloudflare Tunnel
+│   ├── openlist-ingress/    # K8s Ingress (k3s 用)
+│   ├── openlist-node-port/  # NodePort Service (podman 用)
+│   ├── openlist-sftp/       # SFTP Service (可选)
+│   └── secrets/             # 敏感配置 (Secret)
+└── overlays/           # 环境特定配置
+    ├── k3s/            # K3s 生产环境
+    └── podman/         # Podman 本地环境
+```
+
+| 环境   | 说明                   | 部署方式                                                |
+|------ |---------------------- |------------------------------------------------------- |
+| k3s    | 生产环境，带 Ingress 和 HTTPS | `kustomize build overlays/k3s \vert kubectl apply -f -` |
+| podman | 本地开发，NodePort 访问 | `cd overlays/podman && ./run.sh`                        |
+
+
+<a id="orgaf34533"></a>
 
 # 前置操作
 
 
-<a id="org19e96b1"></a>
+<a id="org8a48c96"></a>
 
 ## k3s
 
@@ -32,7 +65,7 @@ curl -sfL https://rancher-mirror.rancher.cn/k3s/k3s-install.sh | INSTALL_K3S_MIR
 ```
 
 
-<a id="orgb23d777"></a>
+<a id="orge34074f"></a>
 
 ### 普通用户权限运行 kubectl
 
@@ -47,7 +80,7 @@ sudo chown $(id -u):$(id -g) $HOME/.kube/config
 这样会导致普通用户有权限用户有权限控制整个集群, 谨慎抉择.
 
 
-<a id="orgc9a03a5"></a>
+<a id="org64774cd"></a>
 
 ## helm
 
@@ -60,7 +93,7 @@ curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
 参考官方安装指南: <https://helm.sh/zh/docs/intro/install>
 
 
-<a id="org3bf55d0"></a>
+<a id="org0623200"></a>
 
 ## cert-manager
 
@@ -86,11 +119,14 @@ kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/
 参考官方安装指南: <https://cert-manager.io/docs/installation>
 
 
-<a id="org1514893"></a>
+<a id="org3c37ad6"></a>
 
 # 部署服务
 
-修改主目录 `kustomization.yaml` 中的 `resources` 配置, 启用功能, 功能如下:
+
+<a id="org5aed187"></a>
+
+## 组件说明
 
 ```yaml
 resources:
@@ -104,6 +140,47 @@ resources:
   - components/openlist-ingress   # traefik 反向代理服务
 ```
 
+| 组件               | 说明          | k3s | podman |
+|------------------ |------------- |--- |------ |
+| openlist-base      | OpenList 核心服务 | ✅  | ✅     |
+| cert-manager       | 自动 TLS 证书 | ✅  | ❌     |
+| openlist-ingress   | Ingress 暴露  | ✅  | ❌     |
+| openlist-node-port | NodePort 暴露 | 可选 | ✅     |
+| openlist-cf-tunnel | Cloudflare 隧道 | ✅  | ❌     |
+| openlist-sftp      | SFTP 服务     | 可选 | 可选   |
+
+
+<a id="orgb88ec65"></a>
+
+## 配置说明
+
+
+<a id="org431df86"></a>
+
+### 非敏感配置 (\`components/config/config.env\`)
+
+```bash
+OPENLIST_DOMAIN=ol.example.com    # 访问域名
+EMAIL=admin@example.com           # 证书通知邮箱
+```
+
+
+<a id="org14b6a2e"></a>
+
+### 敏感配置 (\`components/secrets/value.env\`)
+
+```bash
+DNS_API_TOKEN=xxx    # Cloudflare DNS API Token
+TUNNEL_TOKEN=xxx     # Cloudflare Tunnel Token
+```
+
+
+<a id="orgcaeed35"></a>
+
+## k3s 部署
+
+修改主目录 `kustomization.yaml` 中的 `resources` 配置, 启用功能.
+
 接下来参考 `components/secrets/value.env.example` 和 `components/config/config.env.example` 中的配置, 其中 `config` 的邮箱和域名和 `secrets` 的 DNS API Token 都是自动申请和续签域名证书用的, 不需要可以不填, Tunnel Token 是使用 Cloudflare Tunnel 需要的, 不需要也可以不填.
 
 之后使用 `kustomize build` 命令查看最终生成的配置文件, 使用命令 `kustomize build . | ssh user@1.2.3.4 "cat > ~/openlist-k3s.yaml"` 可以将配置发送到服务器, 在服务器执行命令安装:
@@ -113,7 +190,17 @@ kubectl apply -f openlist-k3s.yaml
 ```
 
 
-<a id="org26987c4"></a>
+<a id="org9402930"></a>
+
+## podman 部署
+
+```bash
+cd overlays/podman
+./run.sh
+```
+
+
+<a id="orgaa40dfe"></a>
 
 ## 初始密码
 
@@ -126,7 +213,7 @@ kubectl logs -f -l app=openlist
 其中有 \`Successfully created the admin user and the initial password is: xxxxxxxx\` 类似字样.
 
 
-<a id="org14d409a"></a>
+<a id="orgeaeac9f"></a>
 
 ## 配置目录
 
@@ -144,7 +231,7 @@ drwxr-xr-x 2 user user   4096 Feb 16 19:56 temp
 ```
 
 
-<a id="orgbcba077"></a>
+<a id="org8505524"></a>
 
 ## 加密目录
 

@@ -1,5 +1,27 @@
 #+title: Readme
 
+* 目录结构
+
+#+begin_example
+.
+├── components/           # 基础组件配置
+│   ├── cert-manager/     # cert-manager 配置 (ClusterIssuer, Certificate)
+│   ├── config/           # 非敏感配置 (ConfigMap)
+│   ├── openlist-base/    # OpenList 基础配置 (Deployment, PVC)
+│   ├── openlist-cf-tunnel/  # Cloudflare Tunnel
+│   ├── openlist-ingress/    # K8s Ingress (k3s 用)
+│   ├── openlist-node-port/  # NodePort Service (podman 用)
+│   ├── openlist-sftp/       # SFTP Service (可选)
+│   └── secrets/             # 敏感配置 (Secret)
+└── overlays/           # 环境特定配置
+    ├── k3s/            # K3s 生产环境
+    └── podman/         # Podman 本地环境
+#+end_example
+| 环境   | 说明                          | 部署方式                                            |
+|--------+-------------------------------+-----------------------------------------------------|
+| k3s    | 生产环境，带 Ingress 和 HTTPS | ~kustomize build overlays/k3s \vert kubectl apply -f -~ |
+| podman | 本地开发，NodePort 访问       | ~cd overlays/podman && ./run.sh~                      |
+
 * 前置操作
 ** k3s
 
@@ -63,7 +85,7 @@ kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/
 
 * 部署服务
 
-修改主目录 =kustomization.yaml= 中的 =resources= 配置, 启用功能, 功能如下:
+** 组件说明
 
 #+begin_src yaml
 resources:
@@ -77,12 +99,47 @@ resources:
   - components/openlist-ingress   # traefik 反向代理服务
 #+end_src
 
+| 组件               | 说明              | k3s  | podman |
+|--------------------+-------------------+------+--------|
+| openlist-base      | OpenList 核心服务 | ✅   | ✅     |
+| cert-manager       | 自动 TLS 证书     | ✅   | ❌     |
+| openlist-ingress   | Ingress 暴露      | ✅   | ❌     |
+| openlist-node-port | NodePort 暴露     | 可选 | ✅     |
+| openlist-cf-tunnel | Cloudflare 隧道   | ✅   | ❌     |
+| openlist-sftp      | SFTP 服务         | 可选 | 可选   |
+
+
+** 配置说明
+
+*** 非敏感配置 (`components/config/config.env`)
+#+begin_src bash
+OPENLIST_DOMAIN=ol.example.com    # 访问域名
+EMAIL=admin@example.com           # 证书通知邮箱
+#+end_src
+
+*** 敏感配置 (`components/secrets/value.env`)
+#+begin_src bash
+DNS_API_TOKEN=xxx    # Cloudflare DNS API Token
+TUNNEL_TOKEN=xxx     # Cloudflare Tunnel Token
+#+end_src
+
+** k3s 部署
+
+修改主目录 =kustomization.yaml= 中的 =resources= 配置, 启用功能.
+
 接下来参考 =components/secrets/value.env.example= 和 =components/config/config.env.example= 中的配置, 其中 =config= 的邮箱和域名和 =secrets= 的 DNS API Token 都是自动申请和续签域名证书用的, 不需要可以不填, Tunnel Token 是使用 Cloudflare Tunnel 需要的, 不需要也可以不填.
 
 之后使用 ~kustomize build~ 命令查看最终生成的配置文件, 使用命令 ~kustomize build . | ssh user@1.2.3.4 "cat > ~/openlist-k3s.yaml"~ 可以将配置发送到服务器, 在服务器执行命令安装:
 
 #+begin_src bash
 kubectl apply -f openlist-k3s.yaml
+#+end_src
+
+** podman 部署
+
+#+begin_src bash
+cd overlays/podman
+./run.sh
 #+end_src
 
 ** 初始密码
