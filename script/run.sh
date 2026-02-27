@@ -10,7 +10,7 @@ YAML_FILE="openlist-podman.yaml"
 # 生成 podman 兼容的 YAML
 generate_yaml() {
     echo "生成 Podman 配置..."
-    kustomize build . > "$YAML_FILE"
+    kustomize build overlays/podman > "$YAML_FILE"
     echo "配置已生成：$YAML_FILE"
 }
 

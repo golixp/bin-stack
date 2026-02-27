@@ -5,6 +5,8 @@ tmp/
 
 openlist-podman.yaml
 
+backup*
+
 *secret*.yaml
 
 *.env
